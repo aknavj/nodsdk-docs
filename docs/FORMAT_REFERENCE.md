@@ -1,7 +1,7 @@
 # StarCraft: Ghost — Asset Format Reference
 
 > Reverse-engineered binary and text formats from the unreleased Xbox build of StarCraft: Ghost (Nihilistic/Swingin' Ape Studios, ~2004).
-> All binary formats are **little-endian**. Coordinate system is **D3D left-handed Z-up** (X-right, Y-forward, Z-up).
+> Scalar fields are **little-endian** unless stated otherwise; MOPP bytecode has big-endian multi-byte operands. Coordinate system is **D3D left-handed Z-up** (X-right, Y-forward, Z-up).
 
 Each format has its own page. Use the implementation guides for cross-format relationships and runtime data handling.
 
@@ -16,11 +16,11 @@ Each format has its own page. Use the implementation guides for cross-format rel
 | 5 | [NOD](./formats/nod.md) | `.nod` | Binary | 3D models with skeleton + materials |
 | 6 | [NMS](./formats/nms.md) | `.nms` | Text | Motion name → animation file mapping |
 | 7 | [NRT/NUT](./formats/nrt-nut.md) | `.nrt` `.nut` | Binary | Terrain heightmap/patch data |
-| 8 | [NIL](./formats/nil.md) | `.nil` | Binary | Indoor level geometry + portals + lightmaps |
+| 8 | [NIL](./formats/nil.md) | `.nil` | Binary | Level sectors, vertex/static lighting, and Havok collision |
 | 9 | [NLFX](./formats/nlfx.md) | `.nlfx` | Text | Per-level effect reference list |
 | 10 | [NPD](./formats/npd.md) | `.npd` | Binary | AI navigation/patrol waypoint graph |
 | 11 | [NSA](./formats/nsa.md) | `.nsa` | Text | Material/shader property definitions |
-| 12 | [NSD](./formats/nsd.md) | `.nsd` | Binary | Scene entity type definitions |
+| 12 | [NSD](./formats/nsd.md) | `.nsd` | Binary | Scene placements and runtime modifier arrays |
 | 13 | [NLT](./formats/nlt.md) | `.nlt` | Text | Raw localization text |
 | 14 | [NOC](./formats/noc.md) | `.noc` | Binary | Per-model collision meshes |
 | 15 | [NLS/NLU](./formats/nls-nlu.md) | `.nls` `.nlu` | Text | Key-value localization strings |

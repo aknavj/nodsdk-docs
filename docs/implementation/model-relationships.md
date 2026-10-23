@@ -105,7 +105,8 @@ NOC trimeshes (rendered as ODE AABBs), and AABB-fallback boxes.
 
 ## NMB Bundle Structure
 
-NMB packs multiple NOD-equivalent entries into a single file:
+NMB packs multiple model entries into a single file, including collision members
+whose `.noc` identities remain distinct from visible `.nod` models:
 
 ```
   NMB file:
@@ -121,6 +122,7 @@ NMB packs multiple NOD-equivalent entries into a single file:
   │  • bones (26B each, compact NOD)      │ │
   │  • mesh groups + bone remap tables    │ │
   │  • markers                            │ │
+  │  • optional v2 packed vertex colors    │ │
   │                                       │ │
   │ Entry[1] ─────────────────────────────┤ │
   │  • ...same structure...               │ │
@@ -139,6 +141,11 @@ NMB packs multiple NOD-equivalent entries into a single file:
   │ ...                                     │
   └─────────────────────────────────────────┘
 ```
+
+The NMB header's `totalMem` is the native 32-bit CPU object arena, not file
+length or combined vertex/GPU-buffer size. Vertex, index, TBN, blend, and optional
+color buffers are separate allocations. See the [NMB format](../formats/nmb.md)
+for the verified arena formula, compact group mapping, and version-2 color flag.
 
 ---
 

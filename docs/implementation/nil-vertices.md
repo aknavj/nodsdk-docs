@@ -26,16 +26,30 @@ The `diffuse` field is Xbox D3DCOLOR — BGRA byte order packed into uint32:
 
 Xbox uses **2× overbright** convention: byte value 128 = 1.0 intensity, 255 ≈ 2.0 intensity. To recover linear color: `channel = byte / 128.0`.
 
-## NIL Surface Group Vertex Types
+## Sector Vertex Pools and Surface Groups
 
-| vertType | Meaning | Extra data |
+| Pool type | Primary stream | Extra data |
 |---|---|---|
-| 0 | Standard (dynamic lighting) | Vertex colors ignored or absent |
-| 1 | With TBN basis | Additional 36 bytes: tangent + binormal + normal |
-| 2 | Baked vertex color | Vertex colors contain pre-baked lighting |
+| 0 | 36 bytes per vertex, including diffuse | None |
+| 1 | Same 36-byte primary vertex | Separate 36-byte-per-vertex tangent/binormal/normal stream |
+
+The sector begins its geometry with a byte-sized pool count. Each pool then
+stores a byte-sized type and four-byte vertex count; the native runtime uses
+the count's low 16 bits. Original pool sequences are `[]`, `[0]`, `[1]`, and
+`[0, 1]`.
+
+Each 47-byte surface group contains **uint16 render flags at byte 20** and a
+**uint8 vertex-pool selector at byte 22**. Those fields are not vertex-format
+overrides. Select the owning sector's pool by index to interpret the group's
+indices and optional TBN data. There is no separate pool type 2 for baked colors:
+both primary formats already contain diffuse at byte 24.
+
+`0xffffffff` is an unbaked white baseline. Moving-object lights and header
+ambient are separate inputs with different equations; see
+[NIL lighting](./nil-lighting.md).
 
 ---
 
 [Documentation home](../../README.md) | [Implementation guides](../IMPLEMENTATION.md)
 
-Related: [NIL](../formats/nil.md) | [Dependency graph](./dependency-graph.md)
+Related: [NIL](../formats/nil.md) | [NIL lighting](./nil-lighting.md) | [NIL collision](./nil-collision.md) | [Dependency graph](./dependency-graph.md)

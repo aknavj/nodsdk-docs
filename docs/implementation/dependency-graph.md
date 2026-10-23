@@ -47,8 +47,8 @@
           │  │      │    │          │         │          │               │         │
           │  │model │    │ model    │         │ level    │               │         │
           │  │mesh  │    │ bundle   │         │ sectors  │               │         │
-          │  │bones │    │ (N×NOD)  │         │ portals  │               │         │
-          │  │mats ─┼─┐  │ mats  ──┼─┐       │ lightmap │               │         │
+          │  │bones │    │ (N×NOD)  │         │ Havok    │               │         │
+          │  │mats ─┼─┐  │ mats  ──┼─┐       │ lighting │               │         │
           │  └──┬───┘ │  └────┬─────┘ │       │ mats  ──┼─── NSA        │         │
           │     │     │       │       │       └──┬──┬───┘               │         │
           │     │     └───────┼───────┴──── NSA  │  │                   │         │
@@ -66,8 +66,8 @@
    │            │    └─────┬──────┘              │  │    │  positions/rotations │
    │            │          │                     │  │    └──────┬───────────────┘
    │            │          ▼                     │  │           │
-   │            │    ┌──────────┐                │  │           │ entity type name
-   │            │    │   NAD    │                │  │           │ → .nod model path
+   │            │    ┌──────────┐                │  │           │ template name
+   │            │    │   NAD    │                │  │           │ → NOT → model ID 4
    │            │    │   .nad   │                │  │           ▼
    │  NOD bone ─┼───▶│ tracks   │                │  │    ┌──────────────┐
    │  indices   │    │ keyframe │                │  │    │ NOD (entity) │──── NSA ──── DDS
@@ -75,7 +75,7 @@
    │  tracks    │    └──────────┘                │  │
    │            │                                │  │    ┌──────────────────────┐
    │            │    ┌──────────┐                │  ├───▶│  NPD  (.npd)         │
-   │            │    │   NMS    │                │  │    │  placement records   │
+   │            │    │   NMS    │                │  │    │  navigation graph    │
    │            │    │   .nms   │                │  │    └──────────────────────┘
    │            │    │ motion   │── NAD paths    │  │
    │            │    │ name map │                │  │    ┌──────────────────────┐
@@ -103,9 +103,9 @@
      │   NOT    │                         │   NCE    │
      │   .not   │                         │   .nce   │
      │ entity   │                         │ cutscene │
-     │ template │──── defines schemas     │ events   │
-     │ hierarch │     for NSD entity      └────┬─────┘
-     └──────────┘     types                    │ paired 1:1
+     │ template │──── expands modifiers   │ events   │
+     │ ordered  │     for NSD entities    └────┬─────┘
+     └──────────┘                             │ paired 1:1
                                                ▼
      LOCALIZATION                         ┌──────────┐
                                           │   NCS    │
@@ -125,6 +125,12 @@
      │ layouts  │                         │ patches  │
      └──────────┘                         └──────────┘
 ```
+
+NSD-to-model lookup requires [ordered NOT expansion](./templates.md), not a
+direct template-name-to-filename mapping. NPD is an independent world-space
+navigation graph. NIL's baked diffuse, moving-object lights, and collision data
+have separate [lighting](./nil-lighting.md) and
+[collision](./nil-collision.md) contracts.
 
 ---
 

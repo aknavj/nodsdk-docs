@@ -1,56 +1,68 @@
-# NPD — Nihilistic Patrol Data
+# NPD — Navigation Graph
 
 **Extension:** `.npd`
 **Type:** Binary
 
-AI navigation/patrol waypoint graph for a level. Contains waypoint nodes with
-positions in navigation-map coordinate space (NOT world-space) and an adjacency
-list defining connectivity between waypoints for AI pathfinding.
+AI navigation waypoint graph with **world-space XYZ positions** and directed
+links. The original loader copies the position floats unchanged and passes them
+to the world's sector lookup. There is no separate approximately 4× XY scale
+or compressed/floor-index Z coordinate system.
 
-**Important:** NPD is NOT entity placement data. Entity world-space positions
-are defined in the NSD file. NPD positions are in a separate 2D navigation-map
-coordinate space with a compressed Z axis (floor/elevation index). The
-`waypointId` field is a unique waypoint identifier, not an NSD entity reference.
+NPD is not entity placement data; [NSD](./nsd.md) supplies entity placements.
+A waypoint ID is a unique navigation identifier, not an NSD entity reference.
 
 ## Header (8 bytes)
 
 | Offset | Size | Field | Description |
 |--------|------|-------|-------------|
-| 0x00 | 2 | version | Format version (= 2) |
+| 0x00 | 2 | version | Native reader accepts 1 or 2; fresh writer uses 2 |
 | 0x02 | 2 | nodeCount | Number of valid waypoint records |
-| 0x04 | 4 | unknown | Reserved / unknown |
+| 0x04 | 2 | linkCount | Number of directed links |
+| 0x06 | 2 | nextUniqueId | Next editor waypoint ID |
 
 ## Waypoint Records (nodeCount × 26 bytes)
 
 | Offset | Size | Field | Description |
 |--------|------|-------|-------------|
 | 0x00 | 2 | waypointId | Unique waypoint identifier (u16) |
-| 0x02 | 12 | position | Navigation-map position (3 floats, XYZ) |
-| 0x0E | 2 | flags | Waypoint flags (0=normal, 1=special, 1024=?) |
-| 0x10 | 4 | color | Debug visualization color (ARGB) |
-| 0x14 | 6 | extra | Additional data (3 × u16) |
+| 0x02 | 12 | position | World-space XYZ, three float32 values |
+| 0x0E | 2 | flags | Node flags; ordinary generated nodes use 0 |
+| 0x10 | 1 | component | Connectivity group; native search compares groups first |
+| 0x11 | 2 | associationA | Associated-link index; `0xFFFF` when absent |
+| 0x13 | 2 | associationB | Associated-link index; `0xFFFF` when absent |
+| 0x15 | 2 | sector | Sector index; recomputed by the native loader |
+| 0x17 | 2 | firstOutgoing | Array index of the first outgoing link |
+| 0x19 | 1 | outgoingCount | Number of outgoing links, at most 255 |
 
-## Adjacency List (remaining bytes after records)
+## Directed Links (linkCount × 6 bytes)
 
-After the waypoint records, the rest of the file is an adjacency list defining
-connections between waypoints. Each entry is 6 bytes:
+Links follow the nodes and are grouped by source node to match each node's
+outgoing range. Each entry occupies six bytes:
 
 | Offset | Size | Field | Description |
 |--------|------|-------|-------------|
 | 0x00 | 2 | fromNode | Source node index (0-based record index) |
 | 0x02 | 2 | toNode | Destination node index (0-based record index) |
-| 0x04 | 2 | cost | Edge cost/weight (0, 1, 2, 3, or special values) |
+| 0x04 | 2 | flags | Link flags, not a numeric cost; ordinary generated links use 0 |
 
-The adjacency list uses **0-based record indices** (not waypointIds). Typical
-levels have ~3–4 links per node, forming 1–3 connected components.
+Endpoints are **0-based record indices**, not waypoint IDs. The loader derives
+normalized direction vectors from endpoint positions. Reverse travel needs a
+separate reverse link.
 
-## Coordinate Space
+## Bounded Generation Profile
 
-NPD positions use a navigation-map coordinate system distinct from NSD
-world-space:
-- X/Y axes cover approximately the same spatial extent as NSD but at ~4× scale
-- Z axis is compressed to floor/elevation levels (e.g., -10.9, -7.6, 1.2, 2.9, 9.9)
-- Not directly usable for entity rendering; only for AI pathfinding logic
+The reconstructed writer supports ordinary flags, absent associations, sector 0,
+and weakly connected component IDs 0..254. Special traversal and association
+semantics remain unresolved. This profile allows IDs 0..65534, at most 65,535
+nodes, 65,535 links, 255 outgoing links per node, and 255 components.
+Zero, underflowing, or overflowing squared link lengths must be rejected before
+native normalization.
+
+## Legacy SDK Field Names
+
+The version-2 parser's `color` and `extra` fields are byte-preserving packed views
+of offsets `0x10..0x19`, not visualization data. `LinkRecord::cost` is a legacy
+name for link flags.
 
 ---
 

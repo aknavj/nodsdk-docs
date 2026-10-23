@@ -6,9 +6,9 @@ Level assets share a common filename stem. Given a level `1_2_1a_Miners_Bunker`:
 
 ```
 Levels/
-  1_2_1a_Miners_Bunker.nil      geometry + portals + lightmaps
+  1_2_1a_Miners_Bunker.nil      sectors + lighting + Havok collision
   1_2_1a_Miners_Bunker.nsd      entity instances (types, positions, rotations)
-  1_2_1a_Miners_Bunker.npd      entity placement records
+  1_2_1a_Miners_Bunker.npd      world-space waypoint graph
   1_2_1a_Miners_Bunker.nlfx     effect name references
 
 Materials/
@@ -69,11 +69,23 @@ Resolution is case-insensitive. The `.dds` extension is implied. NSA texture nam
 
 ## NIL/NOD Shader Name → NSA Material
 
-NIL surface groups and NOD mesh groups store material names as fixed-width strings (32 or 33 bytes, null-padded). These names are keys into the NSA material database, matched case-insensitively.
+NIL surface groups and NOD mesh groups index shader-name tables containing
+32-byte names. These names are keys into the NSA material database, matched
+case-insensitively. NIL names are not 33-byte records.
 
-## NSD Entity Type → NOD Model
+## NSD Template Reference → Resolved Model
 
-NSD entity records contain an entity type name string. For model-type entities, a secondary scan at offset T+140 locates a `.nod` model filename in 36-byte blocks. The model path is constructed as `3D/Models/<name>.nod` and resolved case-insensitively or by fuzzy matching (stripping underscores).
+NSD modifier 0 names a NOT template, not a native class. Resolve the complete
+ordered modifier stream using `Misc/Templates/Global.not` followed by
+scene-listed archives in order. Missing archive extensions receive `.not`;
+archive/template names are case-insensitive, and the first loaded duplicate
+template name wins. See [ordered template expansion](./templates.md).
+
+Resolved modifier 4 supplies the model reference under `3D/Models/`;
+modifier 20 supplies the native type. Do not infer models from a template-name
+pattern, scan only at `T+140`, or strip underscores to invent aliases.
+NOC members retain their collision identity when included in a
+[model bundle](../formats/nmb.md).
 
 ## NMS Motion Name → NAD Path
 

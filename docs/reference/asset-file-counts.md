@@ -8,7 +8,7 @@
 | Motion Sets | NMS | 1 | `3D/Motions/` |
 | Levels | NIL | 8 | `Levels/` |
 | Level FX | NLFX | 8 | `Levels/` |
-| Placements | NPD | 8 | `Levels/` |
+| Navigation Graphs | NPD | 8 | `Levels/` |
 | Scene Data | NSD | 8 | `Levels/` |
 | Materials | NSA | 8 | `Materials/` |
 | Textures | XPR | ~12 | `Materials/`, `UI/` |
@@ -16,7 +16,7 @@
 | Collision | NOC | ~80 | `3D/Collision/` |
 | Loc Text | NLT | 1 | `Misc/` |
 | Loc Strings | NLS/NLU | ~30 | `Localization/` |
-| Templates | NOT | 1 | `Templates/` |
+| Templates | NOT | 1 | `Misc/Templates/` |
 | Effects | NFX | 1 | `Effects/` |
 | UI Layout | NUI | 5 | `UI/` |
 | Camera Keys | NAK | 3 | `3D/Anims/` |

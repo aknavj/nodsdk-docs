@@ -5,7 +5,11 @@
 **Magic:** `0x104C494E` ("NIL\x10")
 **Version:** 35
 
-The primary level geometry format. Contains sector-based BSP/portal architecture with per-vertex baked lighting, lightmap patches, and environment map references.
+Sector-based level geometry, per-vertex baked lighting, static lights for moving
+objects, environment references, and Havok collision data. The verified v35
+layout does **not** contain a separate lightmap texture atlas. Earlier
+interpretations of secondary vertex pools or post-sector bytes as lightmaps
+are superseded by the native loader framing.
 
 ## File Layout
 
@@ -13,61 +17,51 @@ The primary level geometry format. Contains sector-based BSP/portal architecture
 [Header]
   uint32  magic            "NIL\x10"
   uint32  version          35
-  uint8[72] globalLight    Global light parameters
-  float[3]  ambientColor   RGB ambient color
+  uint8[72] globalLight    Global light record; bytes 8..79
+  float[3]  ambientColor   RGB ambient floats; bytes 80..91
   uint32  numShaders       Material count
-  char[]  shaderNames      numShaders × 33-byte padded names
+  char[]  shaderNames      numShaders × 32-byte names
   uint16  numEnvMaps       Environment map count
-  char[]  envMapNames      numEnvMaps × 33-byte padded names
+  char[]  envMapNames      numEnvMaps × 32-byte names
   uint32  numSectors       Sector count
 
 [Sectors: numSectors entries]
   Per sector (variable size):
     uint32    flags
     float[3]  center       Sector center point
-    uint8     numPortals   Portal count
-    uint8[N]  portalData   Portal definitions (N × 16 bytes)
-    uint8     hasGeo       0=empty, 1=standard, 2=with lightmaps
-    uint8     vertType     0=standard, 1=with TBN, 2=vertex color
-    uint16    numVerts     Vertex count
+    uint8     numBoundaryPlanes
+    float[4][] boundaryPlanes   numBoundaryPlanes × 16 bytes
+    uint8     numVertexPools    Observed: 0, 1 or 2
 
-    [Vertex Data: numVerts × 36 bytes]
-      float[3]  position   World-space position
-      float[3]  normal     Surface normal
-      uint32    diffuse    BGRA packed vertex color (Xbox D3DCOLOR)
-      float[2]  uv         Texture coordinates
+    [For each vertex pool]
+      uint8   poolType       0=primary stream, 1=primary plus TBN stream
+      uint32  numVerts       Native reader consumes 4 bytes and uses low 16 bits
 
-    [TBN Data: numVerts × 36 bytes, if vertType == 1]
-      float[3]  tangent
-      float[3]  binormal
-      float[3]  normal
+      [Vertex Data: numVerts × 36 bytes]
+        float[3] position
+        float[3] normal
+        uint32   diffuse    Packed Xbox D3DCOLOR
+        float[2] uv
 
-    [Secondary Vertex Pool: if hasGeo >= 2]
-      uint8   secondaryVertType  Observed: 1 (with TBN)
-      uint32  secondaryVertCount
-      byte[]  vertices           secondaryVertCount × 36 bytes
-      byte[]  tbn                secondaryVertCount × 36 bytes
-      Previously labelled "lightmap patches" by the C++ parser.
-      NILtoMAP now selects this pool for bumped groups (vertType 3)
-      when the primary vertex pool has no TBN stream. Verified against
-      Hive level indices and group bounds; other secondary types remain
-      unsupported by the tool.
+      [TBN Data: numVerts × 36 bytes, only for poolType == 1]
+        float[3] tangent
+        float[3] binormal
+        float[3] normal
 
     uint16    numGroups    Surface group count
     [Surface Groups: numGroups entries, 47 bytes each]
       uint32  shaderIdx        Material index
       uint32  startIdx         Index buffer start
-      uint32  field8
+      uint32  field8           Unknown; observed 0
       uint16  numStripIndices  Triangle strip index count
       uint16  numListIndices   Triangle list index count
-      uint32  field16
-      uint8   vertType         Vertex type override
-      uint8   flag             Rendering flags
-      uint8   field22
+      uint32  field16          Unknown; observed 0
+      uint16  renderFlags      Not a vertex-format selector
+      uint8   vertexPool       Index into the owning sector's vertex pools
       float[3] bboxMin         Group AABB minimum
       float[3] bboxMax         Group AABB maximum
 
-    uint32    numIndices   Index count
+    uint32    numIndices   Present even when numVertexPools is zero
     uint16[]  indices      Triangle strip/list indices
 
     [Things: variable]
@@ -78,55 +72,74 @@ The primary level geometry format. Contains sector-based BSP/portal architecture
         uint32    field2
         float[12] matrix    4×vec3 row matrix
 
-    [SurfThings: variable]
-      uint16  numSurfThings
-      [SurfThing: 72 bytes each]
-        uint8[72] data      Opaque
+    [Static Lights: variable]
+      uint16  numStaticLights
+      [tRenderLight: 72 bytes each]
+        uint8[72] data      Native light record, formerly named "SurfThing"
 
     [EnvRefs: variable]
       uint16  numEnvRefs
-      char[]  envRefNames   N × 33-byte names
+      char[]  envRefNames   numEnvRefs × 32-byte names
 
     [Tail: 6 bytes]
-      uint16  tailField1   Unknown
-      uint32  tailField2   Unknown
+      uint16  tailField1   Unknown; observed 0
+      uint32  tailField2   Unknown; observed 1
 
-[Post-Sector Data: variable size, ~11–42% of file]
-  The data after the sector loop contains spatial/lighting structures
-  that have NOT been fully decoded. Summary from hex analysis:
+[Post-Sector Data: verified no-terrain profile]
+  uint16 terrainCount       0 in the eight examined original files
+  uint16 physicsSetup       Observed 0; meaning not inferred
+  float[6] physicsBounds    Min xyz, max xyz
+  uint16 havokVersion       1
 
-  [Section 1: Portal Collision Mesh]
-    uint32       marker      Always 0
-    float[6]     aabb        Level bounding box (min xyz, max xyz), LE
-    uint8        type        Always 1
-    uint8        pad         Always 0
-    uint8        flag        Always 1
-    uint8        vertCount   Number of collision vertices
-    float[3][]   vertices    vertCount × 12 bytes, LE float3 positions
-                             Forms axis-aligned box faces (portal boundaries)
-    uint16       tail        Unknown (e.g. 0x90C0)
+  Repeat:
+    uint8 segmentType       0=end, 1=world rigid body
+    If segmentType == 1:
+      uint16 vertexCount
+      float[3][] vertices
+      uint32 indexCount
+      uint16[] indices      Triangle-list indices
+      uint16 materialCount
+      byte[][8] materials
+      float[4] moppInfo
+      uint32 moppCodeSize
+      byte[] moppCode
+      uint16 ownerType      0=world, 1=sector, 2=terrain
+      uint16 ownerIndex     Sector/terrain index when applicable
 
-  [Section 2: Triangle Indices]
-    uint8[~5]    zeros       Section separator
-    uint16[]     indices     Triangle indices into Section 1 vertices
-                             Pattern: (2,1,0), (3,2,4), (6,5,4), ...
-
-  [Section 3+: BSP Tree / Lightmap Atlas — NOT DECODED]
-    ~99% of the post-sector data. Byte entropy 7.0–7.3 / 8.0
-    indicates compressed texture data, likely the lightmap atlas.
-    Contains:
-    - Scattered float3 positions (world coordinates)
-    - AABB-like patterns throughout (~200+ in first 100KB)
-    - Possible BSP tree node data (splitting planes + child refs)
-    - Dense high-entropy regions (lightmap pixel data)
-
-  [Tail: Offset Table]
-    Last ~500–600 bytes of the file.
-    Pairs of (uint32 offset, uint32 flag) where flag ∈ {0, 1}.
-    Values are monotonically increasing within groups.
-    Groups separated by flag=0 entries.
-    Likely sector-indexed offsets into the lightmap/BSP data.
+  For each sector:
+    uint32 collisionPresent
+    For each render surface group:
+      uint32 mappingPresent
+      If mappingPresent != 0:
+        uint32 collisionOffset
 ```
+
+Nonzero terrain requires a separate decoder; the zero-terrain layout above
+does not describe terrain payloads.
+
+## Native Interpretation
+
+- Original vertex-pool sequences are `[]`, `[0]`, `[1]`, or `[0, 1]`.
+  Observed counts do not exceed 65,535. A group selects a pool by index, not by
+  interpreting `renderFlags` as a vertex type. Legacy `hasGeo`, padding, and
+  secondary-pool names must not be used to infer a different disk layout.
+- Boundary records are inward half-space planes `(nx, ny, nz, d)`. A point is
+  in the sector when every plane satisfies `dot(n, p) >= d`. Zero boundary planes
+  make that sector cover all space; physics broadphase bounds remain separate.
+- `collisionOffset` is an inclusive triangle-key start, not a byte offset or
+  an index-buffer offset. Material records and surface mappings have different
+  lookup rules; see [NIL collision and spatial data](../implementation/nil-collision.md).
+- Static-light records and header ambient affect moving objects separately from
+  baked vertex colors; see [NIL lighting](../implementation/nil-lighting.md).
+
+The matching debug executable identifies the loading sequence as
+`gameWorld_LoadWorld` (`0x00534410`), `renderTerrain_ReadFile` (`0x005e5670`),
+`gameHavok_ReadPreHavokSetup` (`0x00518c40`),
+`gameHavok_ReadHavokFile` (`0x00519380`), and
+`tWorld::ReadHavokSurfaceGroupOffsets` (`0x00533dc0`).
+Mesh and MOPP framing are read by `hkNSIMeshShape::ReadData` (`0x00518d10`) and
+`simPhysics_ReadMoppCodeFromFile` (`0x004921b0`). These are build-specific
+evidence addresses, not portable API identifiers.
 
 ## Per-File Post-Sector Statistics
 
@@ -149,4 +162,4 @@ Xbox D3DCOLOR is BGRA packed as `uint32`. Vertex colors encode baked lighting wi
 
 [Documentation home](../../README.md) | [Format reference](../FORMAT_REFERENCE.md)
 
-Related: [NSA](./nsa.md) | [NSD](./nsd.md) | [NPD](./npd.md) | [NLFX](./nlfx.md) | [Level Format Relationships](../implementation/level-relationships.md) | [NIL Vertex Data Layout](../implementation/nil-vertices.md) | [Coordinate system](../reference/coordinate-system.md)
+Related: [NSA](./nsa.md) | [NSD](./nsd.md) | [NPD](./npd.md) | [NLFX](./nlfx.md) | [Level Format Relationships](../implementation/level-relationships.md) | [NIL Vertex Data Layout](../implementation/nil-vertices.md) | [NIL lighting](../implementation/nil-lighting.md) | [NIL collision](../implementation/nil-collision.md) | [Coordinate system](../reference/coordinate-system.md)
