@@ -31,6 +31,11 @@ starts has no surface group. The loader sets runtime group flag `0x02` when
 the mapping is absent and clears it when present. Offsets are triangle keys,
 not byte offsets or index-buffer offsets.
 
+Follow the [conditional mapping layout](../formats/nil.md#file-layout): every
+render group has a presence word, but only present mappings have an offset.
+An extra offset for an absent group desynchronizes subsequent groups/sectors
+or leaves trailing bytes.
+
 Each eight-byte material record contains:
 
 | Byte | Size | Meaning |
@@ -92,6 +97,25 @@ exact group mappings. Observed flags and opaque values do not establish complete
 flag semantics or arbitrary multi-sector visibility behavior. A render-only sector
 record is not a complete, collision-valid NIL.
 
+## Collision Starting Positions
+
+Keep the object's collision shape clear of world geometry at startup, not
+just its center point. Enlarging the physics bounds does not move collision
+surfaces or resolve an object touching or overlapping them.
+
+Controlled tests of the native sphere collision path found a numerical failure
+when the sphere center lay exactly on a triangle. The contact calculation
+tried to normalize a zero-length direction vector, producing NaN (not-a-number)
+values that spread into the object's position and velocity. Larger physics
+bounds did not fix the tested cases.
+
+This does not mean every touching or overlapping start fails, nor does it
+establish the cause of the full game's player-spawn problem. Validate actual
+landing and movement in game. The separate
+[player-placement rules](./level-relationships.md#player-placement-and-sector-lookup)
+can also reset a player to the origin; that is distinct from this numerical
+failure.
+
 ## Native Evidence and Scope
 
 In the matching debug executable, group lookup is
@@ -102,6 +126,12 @@ the unaccelerated mesh ray is at `0x0062F520`.
 Addresses are build-specific. Loader framing and controlled native queries do
 not establish player/controller behavior, arbitrary dynamics, or complete game
 loading.
+
+The sphere-start observation comes from
+`hkSphereTriangleAgent::processCollision` (`0x006355B0`) in the same debug
+build. It was reproduced with a sphere probe, not the game's player/controller
+or death handling. See [aknavj/nodsdk-scghost#2](https://github.com/aknavj/nodsdk-scghost/issues/2)
+for the related investigation.
 
 ---
 

@@ -107,8 +107,33 @@ Loading a level requires resolving a chain of cross-format references:
   Navigation IDs and record-index links are independent of NSD placement IDs.
   Native sector lookup recomputes each waypoint's sector from its position.
 
+Scene-wide sky/audio references, fog, far clipping, and reverb are stored in the
+NSD trailer, separately from entity modifiers and NIL surface data. See
+[NSD scene environment](./scene-environment.md) for supported settings and
+their runtime limits.
+
+## Player Placement and Sector Lookup
+
+NSD placement coordinates are authored world-space data, not a guarantee of
+the final player transform. In the matching debug build,
+`gameMultiplayer_PlacePlayer` (`0x0051F7D0`) selects `FindPlayerStart` when
+placement flag `0x8` or `mainSave_bRestoring` is nonzero, rather than directly
+testing multiplayer mode.
+
+Without either condition, a successful current-position sector query preserves
+the player transform; a failed query resets it to identity at the origin.
+Player-start lookup also falls back to the origin if both primary and
+zero-first-selector searches fail. NSD placement coordinates do not override
+these routing rules.
+
+Controlled checks execute original routing, lookup and transform-reset code
+with spatial-query and actor/world lifecycle boundaries substituted. This is
+build-specific evidence, not proof of player/controller physics or actual
+teleportation. The separate [collision-start observations](./nil-collision.md#collision-starting-positions)
+describe a native sphere probe, not the full player path.
+
 ---
 
 [Documentation home](../../README.md) | [Implementation guides](../IMPLEMENTATION.md)
 
-Related: [NIL](../formats/nil.md) | [NSA](../formats/nsa.md) | [DDS](../formats/dds.md) | [TGA](../formats/tga.md) | [XPR](../formats/xpr.md) | [NSD](../formats/nsd.md) | [NOT](../formats/not.md) | [NOD](../formats/nod.md) | [NPD](../formats/npd.md) | [NLFX](../formats/nlfx.md) | [NFX](../formats/nfx.md) | [Dependency graph](./dependency-graph.md)
+Related: [NIL](../formats/nil.md) | [NSA](../formats/nsa.md) | [DDS](../formats/dds.md) | [TGA](../formats/tga.md) | [XPR](../formats/xpr.md) | [NSD](../formats/nsd.md) | [NOT](../formats/not.md) | [NOD](../formats/nod.md) | [NPD](../formats/npd.md) | [NLFX](../formats/nlfx.md) | [NFX](../formats/nfx.md) | [NSD scene environment](./scene-environment.md) | [Dependency graph](./dependency-graph.md)

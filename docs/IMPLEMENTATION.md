@@ -11,6 +11,7 @@ Each topic has its own guide. For binary layouts and text syntax, use the [forma
 | [Cross-Format Dependency Graph](./implementation/dependency-graph.md) | Overview of references between asset formats. |
 | [Naming Conventions That Bind Formats](./implementation/naming-conventions.md) | Filename pairing, material lookup, and asset path resolution. |
 | [Level Format Relationships](./implementation/level-relationships.md) | How geometry, materials, entity placements, navigation, and effects fit together. |
+| [NSD Scene Environment](./implementation/scene-environment.md) | Worldspawn settings for sky, audio references, fog, far clipping, and reverb. |
 | [Model Format Relationships](./implementation/model-relationships.md) | Model internals, bone mapping, collision pairing, and bundles. |
 | [NSA Material Properties](./implementation/material-properties.md) | Material properties, Xbox shader behavior, and blend modes. |
 | [NIL Vertex Data Layout](./implementation/nil-vertices.md) | Level vertex layouts and baked lighting decoding. |
