@@ -107,10 +107,42 @@ it writes this 20-byte empty tail:
 | 2 | camera-region-present flag | 0 |
 | 2 | prelighting count | 0 |
 
-After all objects, the 192-byte trailer contains a zero sound count, three zero
-auxiliary world-array counts, two empty 32-byte fields, 48 zero bytes of numeric
-environment fields, and empty 32-byte sky-model and sky-animation references.
-Zero scene flags omit the optional `0x08000000` section.
+After all objects, the bounded writer emits this 192-byte trailer. Offsets are
+relative to the trailer start, not the file start:
+
+| Offset | Size | Bounded output |
+|--------|------|----------------|
+| 0 | 4 | Zero sound count |
+| 4 | 12 | Three zero auxiliary world-array counts |
+| 16 | 32 | Music reference, empty by default |
+| 48 | 32 | Ambient-loop reference, empty by default |
+| 80 | 4 | `soundEffects`, uint32; unexposed, zero |
+| 84 | 4 | `musicVolume`, uint32; unexposed, zero |
+| 88 | 4 | `ambientVolume`, uint32; unexposed, zero |
+| 92 | 4 | Native reverb preset ID, uint32 in `0..25`; default 0 |
+| 96 | 4 | Fog mode (`uint32`): 0 = none, 1 = linear |
+| 100 | 12 | Fog color, three float32 RGB components in `0..255` |
+| 112 | 4 | Linear fog start distance, float32 |
+| 116 | 4 | Linear fog end distance, float32 |
+| 120 | 4 | Camera far-clip distance, float32; 0 selects native default |
+| 124 | 4 | `effectsFlags`, uint32; unexposed, zero |
+| 128 | 32 | Sky-model reference, empty by default |
+| 160 | 32 | Sky-animation reference, empty by default |
+
+All four reference fields are 32-byte, NUL-terminated, zero-padded ASCII
+strings. The numeric field names and unsigned 32-bit types at offsets 80,
+84, 88, and 124 are confirmed by the executable-matched PDB's `tScene`
+definition. Their trailer-to-scene mappings are `80 -> 0x100`,
+`84 -> 0x124`, `88 -> 0x148`, and `124 -> 0xA8`. Native-reader probes with
+distinct uint32 tags verify storage and complete stream consumption, not
+valid authoring values. Volume units/ranges, sound-effects values and
+effects-flag bits remain unresolved; do not reinterpret these words as floats.
+
+See [NSD scene environment](../implementation/scene-environment.md) for
+`MAPtoNSD` worldspawn settings, accepted values, defaults, and runtime limits.
+
+Zero scene flags omit the optional `0x08000000` section. Sky-model references
+are separate from NIL surface shader bindings.
 
 Supported generated placement types are 0, 2, 7, and 8. Native type 8 is
 `tContainer`, **not a brush-region record**. In the matching debug executable,
@@ -121,6 +153,9 @@ type 8 at object offset `0x10`. These addresses identify that executable only.
 The verified scene-reader framing does not establish complete gameplay
 initialization, player/controller construction, resource loading, or container
 inventory behavior. This bounded output is not a general NSD serializer.
+
+NSD placement coordinates do not override native
+[player-placement routing](../implementation/level-relationships.md#player-placement-and-sector-lookup).
 
 ## Inline Region Geometry
 
@@ -148,4 +183,4 @@ must be reported as unavailable rather than located by plausible-float scans.
 
 [Documentation home](../../README.md) | [Format reference](../FORMAT_REFERENCE.md)
 
-Related: [NOT](./not.md) | [NOD](./nod.md) | [NIL](./nil.md) | [Level Format Relationships](../implementation/level-relationships.md) | [NOT Template Hierarchy](../implementation/templates.md) | [Coordinate system](../reference/coordinate-system.md)
+Related: [NOT](./not.md) | [NOD](./nod.md) | [NIL](./nil.md) | [Level Format Relationships](../implementation/level-relationships.md) | [NSD Scene Environment](../implementation/scene-environment.md) | [NOT Template Hierarchy](../implementation/templates.md) | [Coordinate system](../reference/coordinate-system.md)

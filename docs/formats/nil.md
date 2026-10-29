@@ -117,8 +117,21 @@ are superseded by the native loader framing.
 Nonzero terrain requires a separate decoder; the zero-terrain layout above
 does not describe terrain payloads.
 
+Every sector has a `collisionPresent` word, followed by one `mappingPresent`
+word for **every** render surface group, even when `collisionPresent` is zero.
+An absent group mapping occupies only its four-byte zero `mappingPresent`
+word: there is no `collisionOffset` placeholder. Any nonzero `mappingPresent`
+is followed by a four-byte `collisionOffset`. Extra offset words for absent
+groups desynchronize later groups/sectors or leave trailing bytes.
+
 ## Native Interpretation
 
+- Shader-table entries are native material references. The SDK writes a
+  direct DDS basename for direct textures, or the canonical NSA material name
+  for an archived definition; it does not replace an archived name with its
+  diffuse texture name. Generated names are NUL-terminated ASCII strings of
+  1..31 bytes in the 32-byte field. DDS-backed archived materials pass through
+  without embedding shader code, material banks or textures.
 - Original vertex-pool sequences are `[]`, `[0]`, `[1]`, or `[0, 1]`.
   Observed counts do not exceed 65,535. A group selects a pool by index, not by
   interpreting `renderFlags` as a vertex type. Legacy `hasGeo`, padding, and
