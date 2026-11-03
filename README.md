@@ -3,6 +3,8 @@ OpenNOD SDK community documentation for Nihilistic StarCraft Ghost
 
 ## Documentation
 
+- [Mapping guides](./docs/mapping/README.md): GtkRadiant workflows, including
+  native mission objective regions and linked gameplay objects.
 - [Asset format reference](./docs/FORMAT_REFERENCE.md): binary layouts and text
   syntax, with a separate page for each of the 23 formats.
 - [Implementation guides](./docs/IMPLEMENTATION.md): format dependencies, asset
@@ -22,6 +24,7 @@ Keep documentation focused on individual topics:
 - `docs/formats/`: one page per asset format, including layouts and examples.
 - `docs/implementation/`: one guide per relationship or implementation topic.
 - `docs/game/`: in-game behavior and debugging guides.
+- `docs/mapping/`: practical map-authoring workflows and conformance examples.
 - `docs/reference/`: shared conventions and asset inventory.
 
 Add new pages to the relevant index and link related formats and guides rather
