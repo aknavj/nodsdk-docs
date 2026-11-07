@@ -47,6 +47,18 @@
   uint8   vertexSetIndex Which vertex set to use
   uint8   numBones       Bone palette size
   uint8[20] aBones       Bone palette indices
+
+[Markers: 4 + markerCount × 52 bytes]
+  uint32  markerCount
+  Per marker: 4-byte identity + float[12] matrix
+
+[Blend Data]
+  uint32  blendVertCount Number of blend-vertex records
+  byte[]  blendVerts     blendVertCount × 24 bytes
+
+[Optional Color Extension: observed Xbox version-10 files]
+  uint32  colorCount     Total vertices across all vertex sets
+  uint32[] colors       colorCount packed 4-byte colors
 ```
 
 ## Vertex Types
@@ -67,6 +79,33 @@
 The total byte count per vertex set is `count × totalStride`, but stream 0 vertex data must be read at the base stride (32/36/48), not the combined stride.
 
 **Type prevalence:** Type 0 (1379 files), Type 1 (154), Type 2 (102), Type 3 (11), Type 4 (3), Type 5 (1 — lurker.nod).
+
+## Post-Marker Vertex Colors
+
+After the markers, `blendVertCount` specifies the number of 24-byte
+`tMeshBlendVert` records. Each mesh group's blend data spans
+`numBlendShapes × LOD-0 vertex count` records. A zero count means no blend data,
+not a reserved field.
+
+An optional packed-color extension is observed in Xbox version-10 files:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `colorCount` | uint32 | Total vertices across all vertex sets |
+| `colors` | uint32[colorCount] | One packed four-byte color per vertex |
+
+Colors are a separate stream and do not change vertex strides. In the verified
+files, `blendVertCount` is zero and the tail occupies exactly
+`8 + colorCount × 4` bytes through EOF. This does not establish the layout of
+files combining nonzero blend data with colors.
+
+**Observed values:** `0xFFFFFFFF`, `0x00FFFFFF`, and `0xFF808080` are consistent
+with opaque white, zero-alpha white, and opaque gray. RGB/BGR order and the high
+byte's exact rendering role remain unconfirmed.
+
+**Platform difference:** The examined Win32 loader (`cModel::ReadFile`,
+`0x6A7E50`) reads blend data but does not consume the color extension.
+Packed colors can be retained in the [version-2 NMB color stream](./nmb.md).
 
 ---
 
